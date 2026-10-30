@@ -95,16 +95,20 @@ window.ElNinoDispatch = function (A) {
     return `${f(ll[0], 'N', 'S')}  ${f(ll[1], 'E', 'W')}`;
   }
   function spottedOn(date) { const sp = S.get('spotted', {}); return T.wildlife.filter(w => sp[w.id] === date); }
-  function divesOn(d) { const dl = S.get('dl', {}); return (d.dives || []).map((x, k) => ({ site: x.site, n: dl[`${d.date}:${k}`] || 0 })).filter(x => x.n); }
+  function divesOn(d) {
+    const by = {};
+    A.diveIndex().filter(x => x.date === d.date).forEach(x => { const b = by[x.site] || (by[x.site] = { site: x.site, n: 0, deep: 0, mins: 0 }); b.n++; b.deep = Math.max(b.deep, +x.maxDepth || 0); b.mins += +x.bottom || 0; });
+    return Object.values(by);
+  }
   function totalsTo(date) {
-    const dl = S.get('dl', {}); const sp = S.get('spotted', {});
-    return { dives: Object.entries(dl).filter(([k]) => k.slice(0, 10) <= date).reduce((a, [, v]) => a + v, 0), species: Object.values(sp).filter(v => v <= date).length };
+    const sp = S.get('spotted', {});
+    return { dives: A.diveIndex().filter(x => x.date <= date).length, species: Object.values(sp).filter(v => v <= date).length };
   }
   function autoHighlights(d) {
     const out = [];
     const fl = d.events.filter(e => e.flight);
     if (fl.length) out.push({ key: 'flights', t: `Flew ${[fl[0].flight.fromCity, ...fl.map(e => e.flight.toCity)].join(' → ')}` });
-    divesOn(d).forEach(x => out.push({ key: 'dive:' + x.site, t: `${x.n} dive${x.n > 1 ? 's' : ''} at ${x.site}` }));
+    divesOn(d).forEach(x => out.push({ key: 'dive:' + x.site, t: `${x.n} dive${x.n > 1 ? 's' : ''} at ${x.site}${x.deep ? ` · deepest ${Math.round(x.deep)} m` : ''}${x.mins ? ` · ${x.mins} min underwater` : ''}` }));
     d.events.filter(e => e.type === 'tour').forEach(e => out.push({ key: 'tour:' + e.id, t: `Ashore: ${e.title.replace(/^Land tour: /, '')}` }));
     if (!out.length && d.dives) out.push({ key: 'plan', t: `Diving ${d.dives.map(x => x.site).join(' & ')}` });
     return out;
@@ -614,5 +618,7 @@ window.ElNinoDispatch = function (A) {
     return c;
   }
 
-  return { viewComposer, viewArchive, releaseURLs };
+  // Shared drawing/export kit (used by the dive log for cards and the logbook PDF)
+  const kit = { W, H, M, C, SERIF, SANS, font, rr, cover, wrap, para, caps, fontsReady, loadImg, jpegBytes, makePDF, shareFile, resize, blobURL };
+  return { viewComposer, viewArchive, releaseURLs, kit };
 };

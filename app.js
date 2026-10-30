@@ -544,7 +544,7 @@ window.__startApp = function () {
       <p class="lede" style="--pc:${pc}">${esc(d.summary)}</p>
       ${d.alert ? `<div class="sec"><div class="alert">${I('alert')}<div><b>${esc(d.alert.title)}</b><p>${esc(d.alert.text)}</p></div></div></div>` : ''}
       <div class="sec"><div class="sec-h"><h3>The plan</h3></div><div class="card">${timeline(d.events, c.n)}</div></div>
-      ${d.dives ? `<div class="sec"><div class="sec-h"><h3>Dive sites</h3><a href="#/map/${(d.events.find(e => e.site) || {}).site || ''}">Chart →</a></div><div class="card">${d.dives.map((x, k) => diveSite(ds, x, k)).join('')}</div></div>` : ''}
+      ${d.dives ? `<div class="sec"><div class="sec-h"><h3>Dive sites</h3><a href="#/map/${(d.events.find(e => e.site) || {}).site || ''}">Chart →</a></div><div class="card">${d.dives.map((x, k) => DV.siteBlock(ds, x, k)).join('')}${DV.extraDives(ds).length ? `<div class="divesite"><div class="h"><b>Other dives</b></div><div class="dives">${DV.extraDives(ds).map(DV.diveRow).join('')}</div></div>` : ''}</div></div>` : ''}
       ${d.ideas ? `<div class="sec"><div class="sec-h"><h3>Ideas for the day</h3></div><div class="card"><ul class="ideas">${d.ideas.map((x, k) => `<li><span>${k + 1}</span>${esc(x)}</li>`).join('')}</ul></div></div>` : ''}
       ${d.tasks ? `<div class="sec"><div class="sec-h"><h3>Checklist</h3></div><div class="card">${checklist(d.tasks)}</div></div>` : ''}
       ${c.status !== 'pre' && ds <= c.day.date || c.status === 'post' ? `<div class="sec"><a class="btn" href="#/dispatch/${ds}" style="width:100%;background:var(--coral);padding:15px">${I('heart')} Send a dispatch from this day</a></div>` : ''}
@@ -555,16 +555,7 @@ window.__startApp = function () {
         ${nxt ? `<a class="card next" href="#/day/${nxt.date}"><small>Day ${String(nxt.n).padStart(2, '0')} →</small><b>${esc(nxt.title)}</b></a>` : '<span></span>'}
       </div>`;
   }
-  function diveSite(ds, x, k) {
-    const key = `${ds}:${k}`; const v = S.get('dl', {})[key] || 0;
-    return `<div class="divesite"><div class="h"><b>${esc(x.site)}</b>${x.count ? `<span class="n">×${x.count} planned</span>` : ''}</div>
-      <div class="where">${esc(x.where)}</div><ul>${x.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>
-      <div class="logbtn ${v ? 'on' : ''}" data-dl="${key}">
-        <button data-dlstep="-1" aria-label="One fewer dive">${I('minus')}</button>
-        <span>${v ? `${v} dive${v > 1 ? 's' : ''} logged` : 'Log a dive'}</span>
-        <button data-dlstep="1" aria-label="Log a dive">${I('plus')}</button></div></div>`;
-  }
-  function totalDives() { return Object.values(S.get('dl', {})).reduce((a, b) => a + b, 0); }
+  function totalDives() { return DV ? DV.count() : 0; }
 
   /* ---------------- Map ---------------- */
   const [LON0, LON1, LAT0, LAT1] = MAP.bbox;
@@ -680,11 +671,12 @@ window.__startApp = function () {
     const big = T.wildlife.filter(w => w.big); const bigDone = big.filter(w => spotted[w.id]).length;
     const total = totalDives();
     view.innerHTML = `
-      <header class="page-h"><div class="caps">Field notes</div><h1>The <em>Logbook</em></h1><p>Tick off wildlife and log dives as you go. Saved on this phone.</p></header>
+      <header class="page-h"><div class="caps">Field notes</div><h1>The <em>Logbook</em></h1><p>Every dive in full, plus the wildlife you tick off. Saved on this phone.</p></header>
       <div class="sec rings">
         <div class="card ringcard">${ring(total, 40, '#2F7FD8')}<div><b>${total}</b><span>dives logged</span></div></div>
         <div class="card ringcard">${ring(Object.keys(spotted).length, T.wildlife.length, '#2E9C6A')}<div><b>${Object.keys(spotted).length}<small style="font-size:16px;color:var(--muted)">/${T.wildlife.length}</small></b><span>species spotted</span></div></div>
       </div>
+      ${DV.logbookHTML()}
       <div class="sec"><div class="card pad" style="display:flex;align-items:center;gap:14px">
         <div style="font-family:var(--serif);font-size:40px;line-height:1;color:var(--coral)">${bigDone}<span style="font-size:20px;color:var(--muted)">/6</span></div>
         <div><b style="display:block">The Galápagos Six</b><span class="muted" style="font-size:13px">Hammerhead, whale shark, mola, marine iguana, penguin, flightless cormorant. ${bigDone === 6 ? 'All six. Legendary. 🏆' : 'Get all six for bragging rights.'}</span></div></div></div>
@@ -692,9 +684,8 @@ window.__startApp = function () {
         <div class="species">${T.wildlife.map(w => `<button class="sp ${spotted[w.id] ? 'on' : ''}" data-sp="${w.id}">
           <img src="${img(w.img)}" alt="" loading="lazy">${w.big ? '<span class="big5">Big six</span>' : ''}
           <span class="badge">${I('check')}</span>
-          <span class="lbl"><b>${esc(w.name)}</b><span class="${spotted[w.id] ? 'when' : ''}">${spotted[w.id] ? 'Spotted ' + fmtDate(spotted[w.id], { short: true }) : esc(w.where)}</span></span></button>`).join('')}</div></div>
-      <div class="sec"><div class="sec-h"><h3>Dive log</h3></div>
-        <div class="card">${diveDays.map(d => `<div style="padding:12px 18px 0;display:flex;justify-content:space-between;align-items:baseline"><a href="#/day/${d.date}" class="caps" style="color:${phaseColor(d.phase)}">Day ${String(d.n).padStart(2, '0')} · ${fmtDate(d.date, { short: true })}</a></div>${d.dives.map((x, k) => diveSite(d.date, x, k)).join('')}`).join('')}</div></div>`;
+          <span class="lbl"><b>${esc(w.name)}</b><span class="${spotted[w.id] ? 'when' : ''}">${spotted[w.id] ? 'Spotted ' + fmtDate(spotted[w.id], { short: true }) : esc(w.where)}</span></span></button>`).join('')}</div></div>`;
+    DV.bindLogbook(view);
   }
 
   /* ---------------- Wallet & sub-pages ---------------- */
@@ -890,14 +881,6 @@ window.__startApp = function () {
     const el = (s) => t.closest(s);
     let x;
     if ((x = el('[data-close]'))) { closeSheet(); if (x.tagName !== 'A') return; }
-    if ((x = el('[data-dlstep]'))) {
-      const wrap = x.closest('[data-dl]'); const key = wrap.dataset.dl; const dl = S.get('dl', {});
-      dl[key] = Math.max(0, (dl[key] || 0) + +x.dataset.dlstep); if (!dl[key]) delete dl[key]; S.set('dl', dl); haptic();
-      const v = dl[key] || 0; wrap.classList.toggle('on', !!v); wrap.querySelector('span').textContent = v ? `${v} dive${v > 1 ? 's' : ''} logged` : 'Log a dive';
-      wrap.classList.remove('pop'); void wrap.offsetWidth; wrap.classList.add('pop');
-      if (route().root === 'log') { const sy = scrollY; viewLog(); scrollTo(0, sy); }
-      return;
-    }
     if ((x = el('[data-ev]'))) { const e = EV(x.dataset.ev); if (e) { haptic(); eventSheet(e); } return; }
     if ((x = el('[data-task]'))) {
       const id = x.dataset.task; const done = S.get('tasks', {}); done[id] = !done[id]; if (!done[id]) delete done[id]; S.set('tasks', done);
@@ -949,17 +932,20 @@ window.__startApp = function () {
   }
 
   /* ---------------- Dispatches ---------------- */
+  let DV = null;
   const D = window.ElNinoDispatch({ T, S, I, esc, img, fmtDate, view, toast, go: h => go(h), openSheet, closeSheet, phaseColor, km, ctx, DAY, MAP, proj,
-    routeD: { ab: smooth(T.routes.ab.map(ptOf)), gs: smooth(T.routes.gs.map(ptOf)) } });
+    routeD: { ab: smooth(T.routes.ab.map(ptOf)), gs: smooth(T.routes.gs.map(ptOf)) }, diveIndex: () => DV ? DV.index() : [] });
+  DV = window.ElNinoDives({ T, S, I, esc, img, fmtDate, view, toast, go: h => go(h), openSheet, closeSheet, phaseColor, DAY, ctx, kit: D.kit,
+    releaseURLs: D.releaseURLs, rerender: () => { const sy = scrollY; render(); scrollTo(0, sy); } });
 
   /* ---------------- Router ---------------- */
   function route() {
     const h = location.hash.replace(/^#\/?/, '');
-    const [root, arg] = h.split('/');
-    return { root: root || 'today', arg };
+    const parts = h.split('/');
+    return { root: parts[0] || 'today', arg: parts[1], parts };
   }
   function go(h) { if (location.hash === h) render(); else location.hash = h; }
-  const TABROOT = { dispatch: 'today', dispatches: 'today', today: 'today', trip: 'trip', day: 'trip', map: 'map', log: 'log', wallet: 'wallet', pack: 'wallet', contacts: 'wallet', docs: 'wallet', guides: 'wallet', guide: 'wallet', info: 'wallet', credits: 'wallet', settings: 'today' };
+  const TABROOT = { dive: 'log', dispatch: 'today', dispatches: 'today', today: 'today', trip: 'trip', day: 'trip', map: 'map', log: 'log', wallet: 'wallet', pack: 'wallet', contacts: 'wallet', docs: 'wallet', guides: 'wallet', guide: 'wallet', info: 'wallet', credits: 'wallet', settings: 'today' };
   let lastRoute = '';
   function render() {
     timers.forEach(clearInterval); timers = [];
@@ -967,7 +953,8 @@ window.__startApp = function () {
     const r = route();
     const fns = { today: viewToday, trip: () => viewTrip(r.arg), day: () => viewDay(r.arg), map: () => viewMap(r.arg), log: viewLog, wallet: viewWallet,
       pack: viewPack, contacts: viewContacts, docs: viewDocs, guides: viewGuides, guide: () => viewGuide(r.arg), info: () => viewInfo(r.arg), settings: viewSettings, credits: viewCredits,
-      dispatch: () => D.viewComposer(r.arg || ctx().day.date), dispatches: D.viewArchive };
+      dispatch: () => D.viewComposer(r.arg || ctx().day.date), dispatches: D.viewArchive,
+      dive: () => (r.parts[1] === 'new' || r.parts[2] === 'edit') ? DV.viewForm(r.parts[2] === 'edit' ? ['dive', r.parts[1]] : r.parts) : DV.viewDive(r.arg) };
     (fns[r.root] || viewToday)();
     document.querySelectorAll('.tabbar a').forEach(a => a.classList.toggle('on', a.dataset.tab === (TABROOT[r.root] || 'today')));
     const key = location.hash;
