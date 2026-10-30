@@ -410,6 +410,10 @@ window.__startApp = function () {
         <div class="sec-h"><h3>${c.status === 'pre' ? 'Day one' : 'Today’s plan'}</h3><a href="#/day/${d.date}">Full day →</a></div>
         <div class="card">${timeline(d.events, n)}</div>
       </div>
+      <div class="sec"><a class="card dispatch-cta" href="#/dispatch/${d.date}">
+        <img src="${img(d.img)}" alt="">
+        <div class="tx"><span class="caps">New · Dispatches</span><b>Send home a dispatch</b><span>Your photos, the day’s highlights and a fun fact, laid out like a magazine page</span></div>
+        <div class="go">${I('right')}</div></a></div>
       ${nextDay && c.status !== 'post' ? `<div class="sec"><div class="sec-h"><h3>Tomorrow</h3><a href="#/trip">Itinerary →</a></div>${dayCard(nextDay, c, true)}</div>` : ''}
       <div class="sec"><div class="sec-h"><h3>Quick</h3></div><div class="quick">${quick.map(q => `<a class="qa" href="${q.href}" ${q.ext ? 'target="_blank" rel="noopener"' : ''}><div class="ic">${I(q.ic)}</div><b>${q.t}</b><span>${q.s}</span></a>`).join('')}</div></div>
       <div class="sec">
@@ -426,9 +430,6 @@ window.__startApp = function () {
         <div class="stat"><b>${loggedDives}</b><span>dives logged · ${SKY_DIVES} planned on the Sky alone</span></div>
         <div class="stat"><b>${spotted}<span style="font-size:18px;color:var(--muted)">/${T.wildlife.length}</span></b><span>species spotted</span></div>
       </div></div>
-      <div class="sec"><button class="card install" data-act="family" style="width:100%;text-align:left">
-        <div class="ic" style="width:52px;height:52px;border-radius:15px;display:grid;place-items:center;background:var(--coral);color:#fff;flex:none">${I('heart')}</div>
-        <div><b>Send home an update</b><span>A ready-made status message for family, via any app</span></div></button></div>
       ${!standalone ? `<div class="sec"><div class="card install"><img src="icons/icon-180.png" alt=""><div><b>Put El Niño on your Home Screen</b><span>In Safari, tap ${I('share', 'share')} Share, then <b style="display:inline">Add to Home Screen</b>. It works fully offline once it’s saved.</span></div></div></div>` : ''}
       <div class="footer"><div class="logo-s">El Niño</div>Every booking, every dive, offline. Made for ${T.travellers.join(' &amp; ')}.</div>
     `;
@@ -546,6 +547,7 @@ window.__startApp = function () {
       ${d.dives ? `<div class="sec"><div class="sec-h"><h3>Dive sites</h3><a href="#/map/${(d.events.find(e => e.site) || {}).site || ''}">Chart →</a></div><div class="card">${d.dives.map((x, k) => diveSite(ds, x, k)).join('')}</div></div>` : ''}
       ${d.ideas ? `<div class="sec"><div class="sec-h"><h3>Ideas for the day</h3></div><div class="card"><ul class="ideas">${d.ideas.map((x, k) => `<li><span>${k + 1}</span>${esc(x)}</li>`).join('')}</ul></div></div>` : ''}
       ${d.tasks ? `<div class="sec"><div class="sec-h"><h3>Checklist</h3></div><div class="card">${checklist(d.tasks)}</div></div>` : ''}
+      ${c.status !== 'pre' && ds <= c.day.date || c.status === 'post' ? `<div class="sec"><a class="btn" href="#/dispatch/${ds}" style="width:100%;background:var(--coral);padding:15px">${I('heart')} Send a dispatch from this day</a></div>` : ''}
       <div class="sec"><div class="sec-h"><h3>Journal</h3><span class="muted" style="font-size:12px">Saved on this phone</span></div>
         <div class="card"><textarea class="notes" data-notes="${ds}" placeholder="What did you see today? Who spotted it first?">${esc(notes)}</textarea></div></div>
       <div class="sec daynav">
@@ -726,7 +728,7 @@ window.__startApp = function () {
       <div class="sec tilegrid">${tiles.map(([h, ic, t, s, col]) => `<a class="card tile" href="${h}"><div class="ic" style="background:${col}">${I(ic)}</div><b>${t}</b><span>${s}</span></a>`).join('')}</div>
       <div class="sec"><div class="card list">
         <button class="row" data-act="ics"><div class="ic" style="background:#F2643D">${I('cal')}</div><div class="tx"><b>Add the trip to Calendar</b><span>Every flight, transfer and day, as an .ics file</span></div>${I('right')}</button>
-        <button class="row" data-act="family"><div class="ic" style="background:#D2462A">${I('heart')}</div><div class="tx"><b>Send home an update</b><span>Share today’s status with family</span></div>${I('right')}</button>
+        <a class="row" href="#/dispatches"><div class="ic" style="background:#D2462A">${I('heart')}</div><div class="tx"><b>Dispatches</b><span>Magazine pages home, and The Complete Voyage</span></div>${I('right')}</a>
         <a class="row" href="#/settings"><div class="ic" style="background:#33434D">${I('sliders')}</div><div class="tx"><b>Settings</b><span>Theme, time travel, reset</span></div>${I('right')}</a>
         <a class="row" href="#/credits"><div class="ic" style="background:#7A7F82">${I('camera')}</div><div class="tx"><b>Photo credits</b><span>Wikimedia Commons & operator guides</span></div>${I('right')}</a>
       </div></div>`;
@@ -946,6 +948,10 @@ window.__startApp = function () {
     if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
   }
 
+  /* ---------------- Dispatches ---------------- */
+  const D = window.ElNinoDispatch({ T, S, I, esc, img, fmtDate, view, toast, go: h => go(h), openSheet, closeSheet, phaseColor, km, ctx, DAY, MAP, proj,
+    routeD: { ab: smooth(T.routes.ab.map(ptOf)), gs: smooth(T.routes.gs.map(ptOf)) } });
+
   /* ---------------- Router ---------------- */
   function route() {
     const h = location.hash.replace(/^#\/?/, '');
@@ -953,14 +959,15 @@ window.__startApp = function () {
     return { root: root || 'today', arg };
   }
   function go(h) { if (location.hash === h) render(); else location.hash = h; }
-  const TABROOT = { today: 'today', trip: 'trip', day: 'trip', map: 'map', log: 'log', wallet: 'wallet', pack: 'wallet', contacts: 'wallet', docs: 'wallet', guides: 'wallet', guide: 'wallet', info: 'wallet', credits: 'wallet', settings: 'today' };
+  const TABROOT = { dispatch: 'today', dispatches: 'today', today: 'today', trip: 'trip', day: 'trip', map: 'map', log: 'log', wallet: 'wallet', pack: 'wallet', contacts: 'wallet', docs: 'wallet', guides: 'wallet', guide: 'wallet', info: 'wallet', credits: 'wallet', settings: 'today' };
   let lastRoute = '';
   function render() {
     timers.forEach(clearInterval); timers = [];
     closeSheet(true);
     const r = route();
     const fns = { today: viewToday, trip: () => viewTrip(r.arg), day: () => viewDay(r.arg), map: () => viewMap(r.arg), log: viewLog, wallet: viewWallet,
-      pack: viewPack, contacts: viewContacts, docs: viewDocs, guides: viewGuides, guide: () => viewGuide(r.arg), info: () => viewInfo(r.arg), settings: viewSettings, credits: viewCredits };
+      pack: viewPack, contacts: viewContacts, docs: viewDocs, guides: viewGuides, guide: () => viewGuide(r.arg), info: () => viewInfo(r.arg), settings: viewSettings, credits: viewCredits,
+      dispatch: () => D.viewComposer(r.arg || ctx().day.date), dispatches: D.viewArchive };
     (fns[r.root] || viewToday)();
     document.querySelectorAll('.tabbar a').forEach(a => a.classList.toggle('on', a.dataset.tab === (TABROOT[r.root] || 'today')));
     const key = location.hash;
