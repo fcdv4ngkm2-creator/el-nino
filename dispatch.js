@@ -108,7 +108,8 @@ window.ElNinoDispatch = function (A) {
     const out = [];
     const fl = d.events.filter(e => e.flight);
     if (fl.length) out.push({ key: 'flights', t: `Flew ${[fl[0].flight.fromCity, ...fl.map(e => e.flight.toCity)].join(' → ')}` });
-    divesOn(d).forEach(x => out.push({ key: 'dive:' + x.site, t: `${x.n} dive${x.n > 1 ? 's' : ''} at ${x.site}${x.deep ? ` · deepest ${Math.round(x.deep)} m` : ''}${x.mins ? ` · ${x.mins} min underwater` : ''}` }));
+    const depthTxt = m => (S.get('units', {}).depth === 'ft' ? `${Math.round(m * 3.281)} ft` : `${Math.round(m * 10) / 10} m`);
+    divesOn(d).forEach(x => out.push({ key: 'dive:' + x.site, t: `${x.n} dive${x.n > 1 ? 's' : ''} at ${x.site}${x.deep ? ` · deepest ${depthTxt(x.deep)}` : ''}${x.mins ? ` · ${x.mins} min underwater` : ''}` }));
     d.events.filter(e => e.type === 'tour').forEach(e => out.push({ key: 'tour:' + e.id, t: `Ashore: ${e.title.replace(/^Land tour: /, '')}` }));
     if (!out.length && d.dives) out.push({ key: 'plan', t: `Diving ${d.dives.map(x => x.site).join(' & ')}` });
     return out;

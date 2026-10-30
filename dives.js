@@ -93,6 +93,13 @@ window.ElNinoDives = function (A) {
 
   /* ---------------- Defaults ---------------- */
   const TANKS = [['80 cu ft alu · 11 L', 11.1], ['100 cu ft · 15 L', 15], ['12 L steel', 12]];
+  // the dive's area ("North coast, Santa Cruz") rather than the day's travel line
+  function whereOf(r, d) {
+    const ds = d.dives || [], k = r.siteKey ? +r.siteKey.split(':')[1] : -1;
+    const hit = ds[k] || ds.find(x => r.site && x.site.toLowerCase().includes(r.site.toLowerCase()));
+    return hit && hit.where ? hit.where : d.place;
+  }
+
   function blank(d, k) {
     const site = d.dives && d.dives[k] ? d.dives[k] : null; const last = S.get('diveLast', {});
     const boat = d.phase === 'gs' ? 'gs' : 'ab';
@@ -497,7 +504,7 @@ window.ElNinoDives = function (A) {
         <div class="inner"><div class="navbtns"><a class="roundbtn" href="#/log" aria-label="Back">${I('left')}</a>
           <a class="roundbtn" href="#/dive/${id}/edit" aria-label="Edit">${I('sliders')}</a></div>
           <div class="bottom"><div class="kick">Dive Nº ${no} · ${fmtDate(r.date)}${r.timeIn ? ' · ' + r.timeIn : ''}</div>
-            <h1>${esc(r.site)}</h1><div class="pl">${esc(d.place)}${r.diver ? ' · ' + esc(r.diver) : ''}</div>
+            <h1>${esc(r.site)}</h1><div class="pl">${esc(whereOf(r, d))}${r.diver ? ' · ' + esc(r.diver) : ''}</div>
             <div class="chips"><span class="chip" style="background:${phaseColor(r.boat)};color:#fff">${r.boat === 'gs' ? 'Galapagos Sky' : 'Anne Bonny'}</span>
               ${r.rating ? `<span class="chip" style="background:rgba(255,255,255,.18);color:#FFD9A8">${'★'.repeat(r.rating)}</span>` : ''}
               ${pbs.map(p => `<span class="chip" style="background:var(--coral);color:#fff">${esc(p)}</span>`).join('')}</div></div></div></section>
@@ -547,7 +554,7 @@ window.ElNinoDives = function (A) {
     ctx.globalAlpha = .8; K.font(ctx, 600, 18, K.SANS); K.caps(ctx, fmtDate(r.date) + (r.timeIn ? ' · ' + r.timeIn : ''), CW - m, 132, 3, 'right'); ctx.globalAlpha = 1;
     K.font(ctx, 500, 88, K.SERIF); const tl = K.wrap(ctx, r.site, CW - 2 * m).slice(0, 2);
     tl.forEach((l, i) => ctx.fillText(l, m, PH - 70 - (tl.length - 1 - i) * 92));
-    K.font(ctx, 500, 28, K.SANS); ctx.globalAlpha = .85; ctx.fillText(`${d.place} · ${r.boat === 'gs' ? 'Galapagos Sky' : 'Anne Bonny'}`, m, PH - 22); ctx.globalAlpha = 1;
+    K.font(ctx, 500, 28, K.SANS); ctx.globalAlpha = .85; ctx.fillText(`${whereOf(r, d)} · ${r.boat === 'gs' ? 'Galapagos Sky' : 'Anne Bonny'}`, m, PH - 22); ctx.globalAlpha = 1;
     // stats
     const st = [[show('depth', r.maxDepth), 'max depth'], [r.bottom ? r.bottom + ' min' : '—', 'bottom time'], [show('temp', r.waterTemp), 'water'], [show('vis', r.vis), 'visibility']];
     const cw = (CW - 2 * m) / 4;
@@ -607,7 +614,7 @@ window.ElNinoDives = function (A) {
     ctx.fillStyle = C.coral; K.font(ctx, 300, 150, K.SERIF); ctx.fillText(String(diveNo(r.id)), M - 6, 270);
     const nw = ctx.measureText(String(diveNo(r.id))).width;
     ctx.fillStyle = C.ink; K.font(ctx, 500, 58, K.SERIF); K.para(ctx, r.site, M + nw + 36, 208, W - 2 * M - nw - 36, 60, 1);
-    ctx.fillStyle = C.muted; K.font(ctx, 500, 24, K.SANS); ctx.fillText(`${fmtDate(r.date)} 2026 · ${d.place}`, M + nw + 38, 254);
+    ctx.fillStyle = C.muted; K.font(ctx, 500, 24, K.SANS); ctx.fillText(`${fmtDate(r.date)} 2026 · ${whereOf(r, d)}`, M + nw + 38, 254);
     // boxes
     const gy = 300, bw = (W - 2 * M - 3 * 20) / 4, bh = 124;
     const sac = sacOf(r);

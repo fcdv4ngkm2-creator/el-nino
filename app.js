@@ -345,7 +345,7 @@ window.__startApp = function () {
     if (atSea) {
       next = `<div class="nextup live" data-ev="${atSea.id}" role="button">
         <div class="top"><div class="ic t-${atSea.type}">${I(typeIcon(atSea.type))}</div>
-          <div style="min-width:0"><div class="lbl">Today ${d.phase === 'ab' || d.phase === 'gs' ? 'at sea' : ''}</div>
+          <div style="min-width:0"><div class="lbl">Today ${atSea.type === 'tour' ? 'ashore' : d.phase === 'ab' || d.phase === 'gs' ? 'at sea' : ''}</div>
           <div class="t">${esc(atSea.title)}</div>
           <div class="s">${esc(d.place)}${d.water ? ' · ' + esc(d.water) : ''}</div></div></div>
         <div class="cdcap">Next on the clock: ${esc(target.title)}</div>
